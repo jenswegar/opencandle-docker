@@ -1,0 +1,18 @@
+# Overlay for automated tests: points OpenCandle at the fake LLM sidecar and
+# uses separate volumes so tests never touch real data.
+#   docker compose -p opencandle-test -f compose.yaml -f test/compose.test.yaml --profile fake-llm up -d
+services:
+  opencandle:
+    env_file: !reset []
+    environment:
+      LOCAL_LLM_PROVIDER: fake
+      LOCAL_LLM_BASE_URL: http://fake-llm:18080/v1
+      LOCAL_LLM_MODELS: fake-model
+      LOCAL_LLM_API_KEY: test-key
+    ports: !override
+      - "127.0.0.1:${HOST_PORT:-24567}:14567"
+    depends_on: [fake-llm]
+  fake-llm:
+    environment:
+      FAKE_LLM_API_KEY: test-key
+      FAKE_LLM_LOG: /tmp/requests.log

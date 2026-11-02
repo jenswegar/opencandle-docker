@@ -1,0 +1,8 @@
+{
+  "name": "opencandle-docker-app",
+  "private": true,
+  "description": "Pins the OpenCandle release (and, through the lockfile, every transitive dependency) installed into the image. Update with `make upgrade VERSION=x.y.z`.",
+  "dependencies": {
+    "opencandle": "0.15.0"
+  }
+}

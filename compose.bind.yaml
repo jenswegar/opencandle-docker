@@ -1,0 +1,12 @@
+# Optional overlay: keep data in host folders instead of named volumes.
+#   docker compose -f compose.yaml -f compose.bind.yaml up -d
+# On Linux, build with APP_UID/APP_GID set to your `id -u` / `id -g` so the
+# files are owned by you. Create the folders first so Docker doesn't create
+# them as root.
+services:
+  opencandle:
+    volumes: !override
+      - ${OPENCANDLE_DATA_DIR:-./data/opencandle}:/data/opencandle
+      - ${PI_AGENT_DIR:-./data/pi-agent}:/data/pi-agent
+      - ${WORKSPACE_DIR:-./data/workspace}:/data/workspace
+      - ${HOME_DIR:-./data/home}:/data/home

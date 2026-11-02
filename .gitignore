@@ -1,0 +1,11 @@
+.env
+data/
+backups/
+*.log
+
+# Planning notes kept locally only
+docs/prd/
+docs/issues/
+
+# Local Claude Code settings
+.claude/settings.local.json

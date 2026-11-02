@@ -1,0 +1,56 @@
+name: opencandle
+
+services:
+  opencandle:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      args:
+        APP_UID: ${APP_UID:-1000}
+        APP_GID: ${APP_GID:-1000}
+    image: opencandle-local:latest
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      OPENCANDLE_GUI_HOST: 0.0.0.0
+      OPENCANDLE_GUI_PORT: 14567
+      # Docker port forwarding makes browser requests arrive from the bridge
+      # gateway, not loopback. The GUI still requires its session cookie and
+      # same-origin headers; the loopback-only port publish below is what
+      # keeps other machines out.
+      OPENCANDLE_GUI_ALLOW_REMOTE_PRIVATE_API: "1"
+      BIND_ADDRESS: ${BIND_ADDRESS:-127.0.0.1}
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${HOST_PORT:-14567}:14567"
+    extra_hosts:
+      # Built in on Docker Desktop; needed on Linux Docker Engine.
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - opencandle-data:/data/opencandle
+      - pi-agent:/data/pi-agent
+      - opencandle-workspace:/data/workspace
+      - opencandle-home:/data/home
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    read_only: true
+    tmpfs:
+      - /tmp
+    restart: unless-stopped
+
+  # Test-only OpenAI-compatible server: `docker compose --profile fake-llm up`.
+  # Point LOCAL_LLM_BASE_URL at http://fake-llm:18080/v1, LOCAL_LLM_MODELS=fake-model.
+  fake-llm:
+    profiles: [fake-llm]
+    image: ${NODE_IMAGE:-node:24-bookworm-slim}
+    command: ["node", "/srv/server.mjs"]
+    volumes:
+      - ./test/fake-llm/server.mjs:/srv/server.mjs:ro
+    environment:
+      FAKE_LLM_API_KEY: ${FAKE_LLM_API_KEY:-}
+
+volumes:
+  opencandle-data:
+  pi-agent:
+  opencandle-workspace:
+  opencandle-home:
