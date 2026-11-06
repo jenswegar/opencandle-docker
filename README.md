@@ -49,14 +49,35 @@ Terminal agent instead of the GUI: `make cli`.
 | Host access | The container reaches your machine at `host.docker.internal` (built into Docker Desktop, added by `extra_hosts` on Linux) |
 | GUI | Listens on `0.0.0.0:14567` inside the container, published only on `127.0.0.1` on the host |
 
-### Your own `models.json`
+### Your own `models.json` (multiple providers)
 
-To use several providers or custom per-model settings:
+To use several model providers (e.g. oMLX and a vLLM or llama.cpp instance), or custom per-model settings, manage pi's `models.json` yourself:
 
-1. Set `PI_MODELS_MANAGED=false` in `.env`.
-2. Edit `/data/pi-agent/models.json` (`make shell`), or copy a file in with `docker compose cp`.
+1. Set `PI_MODELS_MANAGED=false` in `.env` — otherwise the entrypoint regenerates `models.json` from the `LOCAL_LLM_*` variables on every start and overwrites your file. (`LOCAL_LLM_*` then only affects the seeded default, not your file.)
+2. Put your file where pi expects it: `/data/pi-agent/models.json`. Two ways:
+   - **Bind-mount a file from the host** (e.g. `models.json` next to `compose.yaml`):
 
-The format is described in [pi's models docs](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/models.md).
+     ```yaml
+     # in compose.yaml, under services.opencandle.volumes — keep the existing lines
+     volumes:
+       - opencandle-data:/data/opencandle
+       - pi-agent:/data/pi-agent
+       - ./models.json:/data/pi-agent/models.json
+       - opencandle-workspace:/data/workspace
+       - opencandle-home:/data/home
+     ```
+
+     Docker layers the file mount over the `pi-agent` volume, so only `models.json` comes from the host; everything else in the pi-agent volume is unchanged. Then edit `./models.json` on the host and `make up` (or `docker compose up -d`) to apply.
+   - **Edit the file in the volume**: `make shell` and edit `/data/pi-agent/models.json`, or copy one in with `docker compose cp models.json opencandle:/data/pi-agent/`. (If you use `compose.bind.yaml` you can just edit `./data/pi-agent/models.json` on the host — no mount needed.)
+
+   Notes:
+   - Create the host file *before* starting; if the path doesn't exist, Docker creates an empty **directory** there instead of a file.
+   - On Linux, the file must be owned by the container user (`APP_UID`/`APP_GID`, default 1000:1000) so the container can read and write it.
+   - `models.json` supports `$ENV_VAR` references for API keys (as the generated config does for `$LOCAL_LLM_API_KEY`), so keep secrets in `.env`, not in the file.
+   - The format is described in [pi's models docs](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/models.md); each provider entry has `baseUrl`, `api`, `apiKey`, and a `models` list.
+3. Choose which provider/model to run in the GUI — your choice is stored in `settings.json` and survives restarts. If you want a fixed default without picking, set `defaultProvider`/`defaultModel` in the `settings.json` of the pi-agent volume (the entrypoint only seeds it when both are absent, so your values are kept).
+
+> **Tip:** if you only have *one* local server, skip this — the `LOCAL_LLM_*` variables in `.env` are simpler. The bind mount only earns its keep from the second provider on.
 
 ## Data
 
